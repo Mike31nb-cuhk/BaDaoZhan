@@ -1,0 +1,22 @@
+# Visual Studio / JetBrains user specific files
+.vs/
+.idea/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.user
+*.opendb
+
+# Unreal Engine generated files
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+.vscode/
+.vsconfig
+
+# Operating System files
+.DS_Store
+Thumbs.db

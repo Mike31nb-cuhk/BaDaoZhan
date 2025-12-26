@@ -1,0 +1,7 @@
+# External Workspace Paths
+# The AI in Cline should consider these paths as part of the project context and can access them directly.
+D:\Projects\BaDaoZhan\03_Docs\BaDaoZhan_Obsidian
+D:\UE\UE_Src\UnrealEngine\Engine\Source\Runtime
+D:\UE\UE_Src\UnrealEngine\Engine\Plugins\Cameras
+
+#I'm currently working on a FBlendCameraNode, the "D:\UE\UE_Src\UnrealEngine\Engine\Plugins\Cameras\GameplayCameras\Source\GameplayCameras\Private\Nodes\Blends\LookAtBlendCameraNode.cpp".

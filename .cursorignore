@@ -1,0 +1,48 @@
+# --- 核心构建与缓存目录 (由引擎生成，体积巨大且无用) ---
+Binaries/
+Intermediate/
+Saved/
+DerivedDataCache/
+Build/
+
+# --- IDE 生成文件 (Rider/VS) ---
+.idea/
+.vs/
+.Rider/
+*.sln
+*.vc.db
+*.opensdf
+*.opendb
+*.suo
+
+# --- 资产目录 (关键！) ---
+# Cursor 无法理解二进制的 .uasset/.umap，索引它们会严重拖慢速度
+# 你的树结构显示 Content 下全是音频、动画、蓝图二进制，必须忽略
+Content/
+
+# --- 插件目录 ---
+# 你的 Plugins 主要是工具类 (BlueprintAssist, ElectronicNodes)
+# 通常不需要 AI 去读这些插件的源码，除非你在修改它们
+Plugins/
+
+# --- Python/外部库 ---
+# 你的树结构里有 PipInstall，这些库文件不需要索引
+PipInstall/
+
+# --- 特定文件类型忽略 ---
+# 再次确保二进制文件不被索引
+*.uasset
+*.umap
+*.dll
+*.exe
+*.pdb
+*.obj
+*.lib
+*.png
+*.jpg
+*.wav
+*.mp3
+
+# --- (可选) 即使在 Source 中也想忽略的文件 ---
+# 如果你不希望 AI 读取引擎生成的反射头文件 (通常不需要)
+# Source/**/*.generated.h
