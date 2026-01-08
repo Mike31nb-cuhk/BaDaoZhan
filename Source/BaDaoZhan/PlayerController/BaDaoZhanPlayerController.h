@@ -17,6 +17,13 @@ enum class EDetectionMode : uint8
 	// 未来将添加其他模式
 };
 
+enum class EViewMode
+{
+	TP,
+	TD,
+	Transition,
+};
+
 USTRUCT(BlueprintType)
 struct FDetectionConfig
 {
@@ -72,6 +79,10 @@ class BADAOZHAN_API ABaDaoZhanPlayerController : public APlayerController
 	GENERATED_BODY()
 
 public:
+	// Sync TP & TD tag
+	void OnLookAtBlendStarted();
+	void OnLookAtBlendFinished();
+	
 	
 	// Interface Function For Debug Purpose
 	UFUNCTION(BlueprintCallable)
@@ -100,11 +111,13 @@ protected:
 	FInputActionHandlerSignature InputActionHandler;
 	
 private:
+
+	
 	// ASC target
 	UAbilitySystemComponent* ASC;
 	FGameplayTag TDTag;
 	FGameplayTag TPTag;
-	
+	EViewMode ViewMode;
 	
 	// World Context: EnemyList, Cursor and pawn location
 	UPROPERTY()
@@ -132,7 +145,7 @@ private:
 	TArray<TScriptInterface<IEnemyInterface>> EnemiesHighlightedThisFrame;
 	FGameplayTag ImmuneToBaDaoZhanDetection;
 	float RecLength;
-	void BaDaoZhanDetection_TD(FVector Direction = FVector(0.0f, 0.0f, 0.0f), 
+	void BaDaoZhanDetection(FVector Direction = FVector(0.0f, 0.0f, 0.0f), 
 		FVector RootLocation = FVector(0,0,0), bool bOverrideDirection = false);
 	void BaDaoZhanDetection_TP();
 

@@ -6,7 +6,9 @@
 #include "AbilitySystemInterface.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "BaDaoZhan/AbilitySystem/BaDaoZhanAbilitySystemLibrary.h"
 #include "BaDaoZhan/Interface/EnemyInterface.h"
+#include "Nodes/Blends/LookAtBlendCameraNode.h"
 
 void ABaDaoZhanPlayerController::BeginPlay()
 {
@@ -20,18 +22,29 @@ void ABaDaoZhanPlayerController::BeginPlay()
 	// Detection Initialize
 	ThisGameMode = Cast<ABaDaoZhanBaseGameMode>(GetWorld()->GetAuthGameMode());
 	EnemyList = ThisGameMode->EnemyList;
-	ThisGameMode->OnEnemyListChanged.BindUFunction(this,"OnEnemyListChanged");
+	ThisGameMode->OnEnemyListChanged.AddUObject(this,&ABaDaoZhanPlayerController::OnEnemyListChanged);
 	ImmuneToBaDaoZhanDetection = FGameplayTag::RequestGameplayTag(FName("BaDaoZhan.Enemy.BaDaoZhanUnAutoDetected"));
 	
+	ULookAtBlendCameraNode::OnLookAtBlendStarted.AddUObject(this,&ABaDaoZhanPlayerController::OnLookAtBlendStarted);
+	ULookAtBlendCameraNode::OnLookAtBlendFinished.AddUObject(this,&ABaDaoZhanPlayerController::OnLookAtBlendFinished);
 	
 	ASC = Cast<IAbilitySystemInterface>(GetPawn())->GetAbilitySystemComponent();
 	TDTag = FGameplayTag::RequestGameplayTag("BaDaoZhan.Camera.Mode.TD");
 	TPTag = FGameplayTag::RequestGameplayTag("BaDaoZhan.Camera.Mode.TP");
-	
 	ASC->RegisterGameplayTagEvent(TDTag, EGameplayTagEventType::NewOrRemoved)
 	.AddUObject(this, &ThisClass::OnCameraModeChanged);
 	ASC->RegisterGameplayTagEvent(TPTag, EGameplayTagEventType::NewOrRemoved)
 		.AddUObject(this, &ThisClass::OnCameraModeChanged);
+}
+
+void ABaDaoZhanPlayerController::OnLookAtBlendStarted()
+{
+	UBaDaoZhanAbilitySystemLibrary::SetViewModeTag(this,ECameraViewMode::Transition);
+}
+
+void ABaDaoZhanPlayerController::OnLookAtBlendFinished()
+{
+	UBaDaoZhanAbilitySystemLibrary::SetViewModeTag(this,ECameraViewMode::NonTransition);
 }
 
 void ABaDaoZhanPlayerController::SetupInputComponent()
@@ -72,6 +85,8 @@ void ABaDaoZhanPlayerController::SetupInputComponent()
 	);
 }
 
+
+
 void ABaDaoZhanPlayerController::OnCameraModeChanged(FGameplayTag Tag, int32 NewCount)
 {
 	if (Tag == TPTag && NewCount != 0)
@@ -92,6 +107,7 @@ void ABaDaoZhanPlayerController::PlayerTick(float DeltaTime)
 	CursorTrace();
 	if (ASC->HasMatchingGameplayTag(TDTag))
 	{
+		ViewMode = EViewMode::TD;
 		bShowMouseCursor = true;
 		DefaultMouseCursor = EMouseCursor::TextEditBeam;
 		FInputModeGameAndUI InputModeData;
@@ -102,6 +118,7 @@ void ABaDaoZhanPlayerController::PlayerTick(float DeltaTime)
 	}
 	if (ASC->HasMatchingGameplayTag(TPTag))
 	{
+		ViewMode = EViewMode::TP;
 		bShowMouseCursor = false;
 		DetectionTrace_TP();
 	}
@@ -124,7 +141,7 @@ void ABaDaoZhanPlayerController::DetectionTrace_TD()
 	{
 		// Trace Mode 1: BaDaoZhanAutoDetection
 		case EDetectionMode::BaDaoZhanDetection:
-			BaDaoZhanDetection_TD();
+			BaDaoZhanDetection();
 			break;
 		// Trace Mode 2: CasualDetection
 		case EDetectionMode::CasualDetection:
@@ -186,16 +203,26 @@ void ABaDaoZhanPlayerController::SetDetectionConfig(const FDetectionConfig& NewC
 	}
 }
 
-void ABaDaoZhanPlayerController::BaDaoZhanDetection_TD(FVector Direction, FVector RootLocation, bool bOverride)
+void ABaDaoZhanPlayerController::BaDaoZhanDetection(FVector Direction, FVector RootLocation, bool bOverride)
 {
-	// 计算并设置参数
+	// Init
 	double GreatestForwardDist = 0;
-	if (!bOverride)
+	EnemyAutoDetected = nullptr;
+	
+	if (ViewMode == EViewMode::TP)
+	{
+		FVector CamForward = PlayerCameraManager->GetCameraRotation().Vector();
+		(CamForward = FVector(CamForward.X, CamForward.Y, 0)).Normalize();
+		Direction = CamForward;
+		RootLocation = PlayerCameraManager->GetCameraLocation();
+	}
+	if (ViewMode == EViewMode::TD)
 	{
 		Direction = (CursorLocation - PawnLocation).GetSafeNormal();
 		RootLocation = PawnLocation;
 	}
-	UE_LOG(LogTemp, Log, TEXT("Direction: %s"), *Direction.ToString());
+	
+	// UE_LOG(LogTemp, Log, TEXT("Direction: %s"), *Direction.ToString());
 	// 配置扇形角度（例如，90 度扇形，半角 45 度）
 	float HalfAngleRadians = FMath::Asin(DetectionConfig.DetectionRadius/DetectionConfig.Length);
 	
@@ -213,14 +240,20 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection_TD(FVector Direction, FVecto
 		FVector EnemyDirection = (EnemyLocation - RootLocation).GetSafeNormal();
 		float CosAngle = FVector::DotProduct(EnemyDirection, Direction);
 		float Angle = FMath::Acos(CosAngle);
-		bool bInFan = Distance <= DetectionConfig.Length && Angle <= HalfAngleRadians;
+		bool bInFan = Distance <= DetectionConfig.Length+(PawnLocation-RootLocation).Length()/2 
+		&& Angle <= HalfAngleRadians;
 		
-		// 矩形区域检测
+		
 		FVector Local = EnemyLocation - RootLocation;
 		float ForwardDist = FVector::DotProduct(Local, Direction);
-		float SideDist = FVector::CrossProduct(Direction, Local).Size();
-
-		bool bInRec = ForwardDist >= 0 && ForwardDist <= RecLength && SideDist <= DetectionConfig.DetectionRadius;
+		bool bInRec = false;
+		if (ViewMode == EViewMode::TD)
+		{
+			// 矩形区域检测
+			float SideDist = FVector::CrossProduct(Direction, Local).Size();
+			bInRec = ForwardDist >= 0 && ForwardDist <= RecLength && SideDist <= DetectionConfig.DetectionRadius;
+		}
+		
 		
 		// 若返回真：则高亮显示 Enemy，并检查 Enemy 是否离角色最远，若是则更新 EnemyDetected 变量。
 		// 若返回否：消除 Enemy 高亮显示
@@ -258,8 +291,8 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection_TD(FVector Direction, FVecto
 			FVector CurrentDir = Direction.RotateAngleAxis(FMath::RadiansToDegrees(CurrentAngle), FVector::UpVector);
 			FVector NextDir = Direction.RotateAngleAxis(FMath::RadiansToDegrees(NextAngle), FVector::UpVector);
 
-			FVector StartPoint = RootLocation + CurrentDir * DetectionConfig.Length;
-			FVector EndPoint = RootLocation + NextDir * DetectionConfig.Length;
+			FVector StartPoint = RootLocation + CurrentDir * (DetectionConfig.Length+(PawnLocation-RootLocation).Length()/2);
+			FVector EndPoint = RootLocation + NextDir * (DetectionConfig.Length+(PawnLocation-RootLocation).Length()/2);
 
 			DrawDebugLine(GetWorld(), StartPoint, EndPoint, FColor::Green, false, 0.1f);
 		}
@@ -268,8 +301,8 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection_TD(FVector Direction, FVecto
 		FVector LeftDir = Direction.RotateAngleAxis(FMath::RadiansToDegrees(HalfAngleRadians), FVector::UpVector);
 		FVector RightDir = Direction.RotateAngleAxis(-FMath::RadiansToDegrees(HalfAngleRadians), FVector::UpVector);
 
-		DrawDebugLine(GetWorld(), RootLocation, RootLocation + LeftDir * DetectionConfig.Length, FColor::Green, false, 0.1f);
-		DrawDebugLine(GetWorld(), RootLocation, RootLocation + RightDir * DetectionConfig.Length, FColor::Green, false, 0.1f);
+		DrawDebugLine(GetWorld(), RootLocation, RootLocation + LeftDir * (DetectionConfig.Length+(PawnLocation-RootLocation).Length()/2), FColor::Green, false, 0.1f);
+		DrawDebugLine(GetWorld(), RootLocation, RootLocation + RightDir * (DetectionConfig.Length+(PawnLocation-RootLocation).Length()/2), FColor::Green, false, 0.1f);
 	
 	
 		FVector Forward = Direction * RecLength;
@@ -294,7 +327,8 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection_TP()
 {
 	// 获取当前摄像机的正前方向量
 	FVector CamForward = PlayerCameraManager->GetCameraRotation().Vector();
-	BaDaoZhanDetection_TD(CamForward,PlayerCameraManager->GetCameraLocation(),true);
+	(CamForward = FVector(CamForward.X, CamForward.Y, 0)).Normalize();
+	BaDaoZhanDetection(CamForward,PlayerCameraManager->GetCameraLocation(),true);
 }
 
 

@@ -7,6 +7,15 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "BaDaoZhanAbilitySystemLibrary.generated.h"
 
+UENUM(BlueprintType)
+enum class ECameraViewMode : uint8
+{
+	TD,	
+	TP,
+	Transition,
+	NonTransition
+};
+
 /**
  * 
  */
@@ -15,7 +24,8 @@ class BADAOZHAN_API UBaDaoZhanAbilitySystemLibrary : public UBlueprintFunctionLi
 {
 	GENERATED_BODY()
 
-	UFUNCTION(BlueprintCallable, Category = "ViewMode")
-	static void SetViewModeTag(const AActor* TargetActor, FGameplayTag NewViewModeTag);
+	public:
+	UFUNCTION(BlueprintCallable, meta = ( WorldContext = "WorldContextObject"),Category = "ViewMode")
+	static void SetViewModeTag(const UObject* WorldContextObject, ECameraViewMode NewViewMode);
 
 };

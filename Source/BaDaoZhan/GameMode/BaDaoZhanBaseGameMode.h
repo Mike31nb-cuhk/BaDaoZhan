@@ -7,7 +7,7 @@
 #include "GameFramework/GameMode.h"
 #include "BaDaoZhanBaseGameMode.generated.h"
 
-DECLARE_DYNAMIC_DELEGATE(FOnEnemyListChangedSignature);
+DECLARE_MULTICAST_DELEGATE(FOnEnemyListChangedSignature);
 
 /**
  * 

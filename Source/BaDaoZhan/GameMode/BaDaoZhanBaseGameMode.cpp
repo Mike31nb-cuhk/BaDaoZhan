@@ -6,11 +6,11 @@
 void ABaDaoZhanBaseGameMode::AddEnemy(TScriptInterface<IEnemyInterface> Enemy)
 {
 	EnemyList.Add(Enemy);
-	OnEnemyListChanged.ExecuteIfBound();
+	OnEnemyListChanged.Broadcast();
 }
 
 void ABaDaoZhanBaseGameMode::RemoveEnemy(TScriptInterface<IEnemyInterface> Enemy)
 {
 	EnemyList.Remove(Enemy);
-	OnEnemyListChanged.ExecuteIfBound();
+	OnEnemyListChanged.Broadcast();
 }
