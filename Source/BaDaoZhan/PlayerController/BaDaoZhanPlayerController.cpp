@@ -7,6 +7,7 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "BaDaoZhan/AbilitySystem/BaDaoZhanAbilitySystemLibrary.h"
+#include "BaDaoZhan/Attributes/BaDaoZhanAttributeSet.h"
 #include "BaDaoZhan/Interface/EnemyInterface.h"
 #include "Nodes/Blends/LookAtBlendCameraNode.h"
 
@@ -205,6 +206,7 @@ void ABaDaoZhanPlayerController::SetDetectionConfig(const FDetectionConfig& NewC
 
 void ABaDaoZhanPlayerController::BaDaoZhanDetection(FVector Direction, FVector RootLocation, bool bOverride)
 {
+	
 	// Init
 	double GreatestForwardDist = 0;
 	EnemyAutoDetected = nullptr;
@@ -260,6 +262,8 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection(FVector Direction, FVector R
 		// Factor 是敌人离角色距离的线性spectrum，0则重叠，1则距离等于Length
 		if (bInFan || bInRec)
 		{
+			const UBaDaoZhanAttributeSet* AttrSet = ASC->GetSet<UBaDaoZhanAttributeSet>();
+			if (AttrSet && AttrSet->GetStamina() < 5.f){return;}
 			Enemy->HighlightActor(2);
 			EnemiesHighlightedThisFrame.Add(Enemy);
 			if (ForwardDist >= GreatestForwardDist)
@@ -276,6 +280,8 @@ void ABaDaoZhanPlayerController::BaDaoZhanDetection(FVector Direction, FVector R
 	
 	if (bDrawDebugDetectionShape)
 	{
+		// todo: 不要hard-coded
+		RootLocation.Z = 120;
 		// Debug Draw
 		FVector UpAxis = FVector::UpVector; // 如果你的项目是Z轴朝上
 	
@@ -405,6 +411,7 @@ FDetectionResultData ABaDaoZhanPlayerController::GetDetectedData4BaDaoZhan()
 			PlayerCameraManager->GetCameraRotation().Vector()*DetectionConfig.Length;
 		return FDetectionResultData(FVector(TargetLocation.X,TargetLocation.Y,PawnLocation.Z),false);
 	}
+	
 	if (ASC->HasMatchingGameplayTag(TDTag))
 	{
 		if ((CursorLocation - PawnLocation).Length() <= DetectionConfig.Length)
@@ -419,6 +426,7 @@ FDetectionResultData ABaDaoZhanPlayerController::GetDetectedData4BaDaoZhan()
 			return FDetectionResultData(FVector(TargetLocation.X,TargetLocation.Y,PawnLocation.Z),false);
 		}
 	}
+	
 	else
 	{
 		return FDetectionResultData(PawnLocation,false);

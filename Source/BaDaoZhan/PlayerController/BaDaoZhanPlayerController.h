@@ -110,6 +110,11 @@ protected:
 
 	FInputActionHandlerSignature InputActionHandler;
 	
+	// Blueprint Function, called after delegate
+	UFUNCTION(BlueprintImplementableEvent, Category = "ViewMode")
+	void LookAtEnded();
+	UFUNCTION(BlueprintImplementableEvent, Category = "ViewMode")
+	void LookAtStarted();
 private:
 
 	
@@ -149,7 +154,9 @@ private:
 		FVector RootLocation = FVector(0,0,0), bool bOverrideDirection = false);
 	void BaDaoZhanDetection_TP();
 
+	// LookAtBlendNode Delegate Bind Function
 	void OnCameraModeChanged(FGameplayTag Tag, int32 NewCount);
+	
 
 	
 	virtual void PlayerTick(float DeltaTime) override;
